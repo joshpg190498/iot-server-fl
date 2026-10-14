@@ -1,0 +1,83 @@
+# =====================================================================
+# Deployment Engine local — M1 · Arranque A
+# SuperLink + 2 SuperNodes x86 en el host, comunicándose por gRPC (NO simulación).
+# Publica el puerto Fleet (9092) para que en el Arranque B la Raspberry se conecte.
+#
+# Uso:
+#   docker compose -f docker-compose.deploy.yml up -d
+#   docker compose -f docker-compose.deploy.yml exec superlink uv run flwr config list
+#   docker compose -f docker-compose.deploy.yml exec superlink uv run flwr run . edge-sbc --stream
+#   docker compose -f docker-compose.deploy.yml down
+#
+# Al terminar `flwr run`, el modelo final queda registrado en MODEL_VERSION
+# (buscar en el log la línea "[registry] modelo registrado -> ...").
+# =====================================================================
+services:
+  superlink:
+    build: .
+    image: iot-server-fl:local
+    container_name: fl-superlink
+    command:
+      - uv
+      - run
+      - flower-superlink
+      - --insecure
+      - --fleet-api-address
+      - 0.0.0.0:9192
+      - --control-api-address
+      - 0.0.0.0:9193
+    ports:
+      - "9192:9192"                       # Fleet API -> Pi (Arranque B)
+      - "9193:9193"                       # Control API -> flwr run
+    volumes:
+      - .:/app                            # código en vivo (venv en /opt/venv)
+      - ./deploy/flwr-config.toml:/root/.flwr/config.toml   # conexión edge-sbc registrada
+    # [registro] El ServerApp corre aquí: al terminar el entrenamiento registra
+    # el modelo final en Postgres (iot-server-infra) y lo copia a ./artifacts,
+    # que es la carpeta que sirve docker-compose.artifacts.yml a las Pi.
+    environment:
+      ARTIFACTS_DIR: /app/artifacts
+      POSTGRES_HOST: host.docker.internal
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres-sbc-pms
+      POSTGRES_PASSWORD: postgres-sbc-pms
+      POSTGRES_DB: db_sbc_pms
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    shm_size: "512m"
+
+  supernode-1:
+    build: .
+    image: iot-server-fl:local
+    container_name: fl-supernode-1
+    depends_on: [superlink]
+    command:
+      - uv
+      - run
+      - flower-supernode
+      - --insecure
+      - --superlink
+      - superlink:9192
+      - --node-config
+      - partition-id=0 num-partitions=2
+    volumes:
+      - .:/app
+    shm_size: "512m"
+
+  supernode-2:
+    build: .
+    image: iot-server-fl:local
+    container_name: fl-supernode-2
+    depends_on: [superlink]
+    command:
+      - uv
+      - run
+      - flower-supernode
+      - --insecure
+      - --superlink
+      - superlink:9192
+      - --node-config
+      - partition-id=1 num-partitions=2
+    volumes:
+      - .:/app
+    shm_size: "512m"

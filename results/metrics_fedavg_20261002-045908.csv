@@ -1,0 +1,2 @@
+timestamp_utc,strategy,gamma,server_round,train_loss,train_accuracy,test_loss,test_accuracy,overfit_gap
+2026-10-02T04:59:26.130975+00:00,fedavg,0.0,0,2.29346,0.083,2.2924,0.08,0.003

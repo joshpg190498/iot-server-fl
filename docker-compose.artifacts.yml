@@ -1,0 +1,54 @@
+# Registro de modelos + servidor de artefactos (.tflite) para el despliegue en los SBC.
+#
+# Todo corre en Docker (Linux), igual que el runtime FL: no se instala nada en Windows.
+#
+#   # servidor de artefactos (queda corriendo)
+#   docker compose -f docker-compose.artifacts.yml up -d artifacts
+#   curl http://localhost:8000/healthz
+#
+#   # registrar una versión (job: corre y termina)
+#   docker compose -f docker-compose.artifacts.yml run --rm registry \
+#       uv run python -m fl_edge.registry.models register --model fashion-cnn --tflite checkpoints/global_r3.tflite
+#
+#   # tests del registro y del servidor de artefactos
+#   docker compose -f docker-compose.artifacts.yml run --rm registry uv run pytest -v tests/test_registry.py
+#
+# ./artifacts es compartido: el registro escribe ahí y el servidor lo sirve.
+services:
+  artifacts:
+    image: python:3.12-alpine
+    container_name: fl-artifacts
+    command: ["python", "/srv/artifact_server.py"]
+    environment:
+      ARTIFACTS_DIR: /artifacts
+      ARTIFACT_PORT: "8000"
+    volumes:
+      - ./fl_edge/registry/artifact_server.py:/srv/artifact_server.py:ro
+      - ./artifacts:/artifacts:ro
+    ports:
+      - "8000:8000"
+    restart: always
+
+  # Misma imagen que el runtime FL (Dockerfile del proyecto). No es un daemon:
+  # se usa con `docker compose run --rm registry <comando>`.
+  registry:
+    build: .
+    profiles: ["tools"]          # no arranca con `up`; solo con `run`
+    working_dir: /app
+    environment:
+      ARTIFACTS_DIR: /app/artifacts
+      # Postgres corre en otro compose (iot-server-infra) publicado en el host:
+      # desde un contenedor, el host se alcanza como host.docker.internal.
+      POSTGRES_HOST: host.docker.internal
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres-sbc-pms
+      POSTGRES_PASSWORD: postgres-sbc-pms
+      POSTGRES_DB: db_sbc_pms
+      PG_TEST_URL: postgresql://postgres-sbc-pms:postgres-sbc-pms@host.docker.internal:5432/db_sbc_pms
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # necesario en Linux; inocuo en Docker Desktop
+    volumes:
+      - ./checkpoints:/app/checkpoints:ro
+      - ./artifacts:/app/artifacts
+      - ./fl_edge:/app/fl_edge:ro        # código actual sin reconstruir la imagen
+      - ./tests:/app/tests:ro

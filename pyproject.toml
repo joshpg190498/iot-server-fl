@@ -1,0 +1,85 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fl-edge"
+version = "0.1.0"
+description = "Plataforma MLOps FL en el borde — núcleo de aprendizaje federado (Flower)"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "flwr[simulation]>=1.13.0,<2.0.0",
+    "tensorflow-cpu>=2.16,<2.20",   # usar 'tensorflow' si el equipo tiene GPU
+    "numpy>=1.26",
+    "psycopg[binary]>=3.3.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["fl_edge"]
+
+# ---------------------------------------------------------------------------
+# Configuración de la Flower App (la lee `flwr run`)
+# ---------------------------------------------------------------------------
+[tool.flwr.app]
+publisher = "joshpg"
+
+# Componentes: se implementan en los pasos 3 y 4 de este sprint.
+[tool.flwr.app.components]
+serverapp = "fl_edge.server_app:app"
+clientapp = "fl_edge.client_app:app"
+
+# Hiperparámetros del run. Se pueden sobreescribir en CLI con:
+#   uv run flwr run . local-sim --run-config "num-server-rounds=5 gamma=2.0"
+[tool.flwr.app.config]
+num-server-rounds = 3
+fraction-train = 1.0
+local-epochs = 1
+batch-size = 32
+learning-rate = 0.01
+round-timeout-seconds = 3600
+min-train-nodes = 2
+strategy = "fedavg"          # 'fedavg' | 'telemetry_weighted' (via registry)
+gamma = 0.0                  # exponente de ponderación por salud (0 => FedAvg)
+dataset = "fashion_mnist"    # bring-up de M0 (CIFAR-10 llega en la campaña)
+seed = 42
+local-time-budget-s = 60.0   # 0 = sin presupuesto
+lambda = 2.0
+alpha-work = 0.5
+telemetry-grace-s = 5.0
+persist-rounds = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+# ---------------------------------------------------------------------------
+# Federaciones
+# ---------------------------------------------------------------------------
+
+#######################################################################
+# CONFIGURATION MIGRATION NOTICE:
+#
+# What was previously called "federation config" for SuperLink
+# connections in pyproject.toml has been renamed and moved.
+#
+# These settings are now **SuperLink connection configuration**
+# and are defined in the Flower configuration file.
+#
+# The entries below are commented out intentionally and are kept
+# only as a migration reference.
+#
+# Docs: https://flower.ai/docs/framework/ref-flower-configuration.html
+#######################################################################
+
+# [tool.flwr.federations]
+# default = "local-sim"
+
+# # Simulación local (M0): N SuperNodes en la misma máquina, sin hardware real.
+# [tool.flwr.federations.local-sim]
+# options.num-supernodes = 2
+
+# # Despliegue real en SBCs (Sprint 2): dirección del SuperLink en el servidor.
+# [tool.flwr.federations.edge-sbc]
+# address = "127.0.0.1:9093"
+# insecure = true

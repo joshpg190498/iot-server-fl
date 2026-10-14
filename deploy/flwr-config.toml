@@ -1,0 +1,9 @@
+# Configuración de conexiones de Flower (~/.flwr/config.toml) para Flower 1.36.
+# Formato: sección [superlink.<nombre>] (una "SuperLink connection"), NO el
+# formato [tool.flwr.federations.<nombre>] que es solo del pyproject.toml.
+# Se monta en el contenedor `superlink` vía docker-compose.deploy.yml, así que
+# es persistente y versionado (no hay que escribirlo a mano cada vez).
+
+[superlink.edge-sbc]
+address = "127.0.0.1:9193"   # Control API del SuperLink (dentro del propio contenedor)
+insecure = true

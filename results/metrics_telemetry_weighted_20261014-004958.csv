@@ -1,0 +1,5 @@
+timestamp_utc,strategy,gamma,server_round,train_loss,train_accuracy,test_loss,test_accuracy,overfit_gap
+2026-10-14T00:50:06.809199+00:00,telemetry_weighted,1.0,0,2.2997,0.1278,2.30149,0.1228,0.005
+2026-10-14T00:51:41.119276+00:00,telemetry_weighted,1.0,1,0.47975,0.8296,0.49289,0.8186,0.011
+2026-10-14T00:53:13.860537+00:00,telemetry_weighted,1.0,2,0.37912,0.8668,0.39769,0.8603,0.0065
+2026-10-14T00:54:45.335984+00:00,telemetry_weighted,1.0,3,0.33824,0.8736,0.35973,0.8659,0.0077

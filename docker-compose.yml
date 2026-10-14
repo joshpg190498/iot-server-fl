@@ -1,0 +1,18 @@
+# Compose del runtime FL (M0: simulación local, sin brokers ni BD todavía).
+services:
+  fl-sim:
+    build: .
+    container_name: fl-edge-sim
+    shm_size: "2gb"          # Ray (motor de simulación de Flower) usa /dev/shm
+    volumes:
+      # Código en vivo: editas en el host y corres sin reconstruir la imagen.
+      # El venv está en /opt/venv (fuera de /app), así que el montaje no lo tapa.
+      - .:/app
+      # (./checkpoints queda cubierto por el montaje anterior: los .tflite
+      #  aparecen directamente en el host.)
+ 
+    # --- Paso 1-2: validación de entorno ---
+    command: ["uv", "run", "flwr", "--version"]
+ 
+    # --- A partir del paso 4: simulación real (reemplazar el command anterior) ---
+    # command: ["uv", "run", "flwr", "run", ".", "local-sim", "--stream"]
